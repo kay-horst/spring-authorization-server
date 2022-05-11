@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns="http://www.w3.org/1999/xhtml" xmlns:th="https://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Device Grant Example</title>
+    <link rel="stylesheet" href="/webjars/bootstrap/css/bootstrap.css" th:href="@{/webjars/bootstrap/css/bootstrap.css}" />
+    <style rel="stylesheet">
+        html, body, .container, .jumbotron {
+            height: 100%;
+        }
+        .jumbotron {
+            margin-bottom: 0;
+        }
+        .gap {
+            margin-top: 70px;
+        }
+        .code {
+            font-size: 2em;
+        }
+    </style>
+</head>
+<body>
+<div class="jumbotron">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-8">
+                <form th:action="@{/activate}" method="get">
+                    <p>Enter the activation code to authorize the device.</p>
+                    <p class="gap">Activation Code</p>
+                    <div class="form-group">
+                        <label class="sr-only" for="code">Activation Code</label>
+                        <input type="text" class="form-control" id="code" name="code" placeholder="Activation Code">
+                    </div>
+                    <button type="submit" class="btn btn-default">Submit</button>
+                </form>
+            </div>
+            <div class="col-md-4">
+                <img src="/assets/img/devices.png" th:src="@{/assets/img/devices.png}" class="img-responsive" alt="Devices">
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

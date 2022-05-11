@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:th="https://www.thymeleaf.org">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <title>Device Grant Example</title>
+        <link rel="stylesheet" href="/webjars/bootstrap/css/bootstrap.css" th:href="@{/webjars/bootstrap/css/bootstrap.css}" />
+        <style rel="stylesheet">
+            html, body, .container, .jumbotron {
+                height: 100%;
+            }
+            .jumbotron {
+                margin-bottom: 0;
+            }
+            .gap {
+                margin-top: 70px;
+            }
+            .code {
+                font-size: 2em;
+                letter-spacing: 2rem;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="jumbotron">
+            <div class="container">
+                <div class="row">
+                    <div class="col-md-8">
+                        <p>Please visit <a href="http://localhost:9000/activate">localhost:9000/activate</a> on another device to continue.</p>
+                        <p class="gap">Activation Code</p>
+                        <div class="well">
+                            <span class="code" th:text="${userCode}"></span>
+                            <form id="authorize-form" th:action="@{/authorize}" method="post">
+                                <input type="hidden" id="code" th:value="${userCode}" />
+                            </form>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <img src="/assets/img/devices.png" th:src="@{/assets/img/devices.png}" class="img-responsive" alt="Devices">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script src="/webjars/jquery/jquery.min.js" th:src="@{/webjars/jquery/jquery.min.js}"></script>
+        <script type="text/javascript">
+            function authorize() {
+                let userCode = $('#code').val();
+                let csrfToken = $('[name=_csrf]').val();
+                if (userCode) {
+                    $.ajax({
+                        url: '/authorize',
+                        method: 'POST',
+                        data: {
+                            code: userCode,
+                            _csrf: csrfToken
+                        },
+                        timeout: 0
+                    }).done(function(response) {
+                        window.location.href = `/authorized?code=${userCode}`;
+                    });
+                }
+            }
+            window.addEventListener('load', function() {
+                window.setInterval(authorize, 5000);
+            });
+        </script>
+    </body>
+</html>

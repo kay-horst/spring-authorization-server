@@ -1,0 +1,33 @@
+server:
+  port: 9000
+
+logging:
+  level:
+    root: INFO
+    org.springframework.web: INFO
+    org.springframework.security: trace
+#    org.springframework.security.oauth2: INFO
+#    org.springframework.boot.autoconfigure: DEBUG
+
+spring:
+  security:
+    oauth2:
+      authorizationserver:
+        registration:
+          messaging-client:
+            client-id: messaging-client
+            client-secret: "{noop}secret"
+            client-authentication-method:
+              - client_secret_basic
+            authorization-grant-type:
+              - authorization_code
+              - refresh_token
+              - urn:ietf:params:oauth:grant-type:device_code
+            redirect-uri:
+              - http://127.0.0.1:8080/login/oauth2/code/messaging-client-oidc
+            scope:
+              - openid
+              - message.read
+              - message.write
+            client-settings:
+              require-authorization-consent: true
