@@ -110,7 +110,7 @@ public class DeviceController {
 						.uri(clientRegistration.getProviderDetails().getAuthorizationUri())
 						.headers(headers -> headers.setBasicAuth(clientRegistration.getClientId(),
 								clientRegistration.getClientSecret()))
-						.contentType(MediaType.APPLICATION_JSON)
+						.contentType(MediaType.APPLICATION_FORM_URLENCODED)
 						.body(BodyInserters.fromFormData(requestParameters))
 						.retrieve()
 						.bodyToMono(TYPE_REFERENCE)
