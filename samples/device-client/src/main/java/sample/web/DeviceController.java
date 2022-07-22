@@ -100,7 +100,6 @@ public class DeviceController {
 				this.clientRegistrationRepository.findByRegistrationId("messaging-client-device-grant");
 
 		MultiValueMap<String, String> requestParameters = new LinkedMultiValueMap<>();
-		requestParameters.add(OAuth2ParameterNames.GRANT_TYPE, "urn:ietf:params:oauth:grant-type:device_code");
 		requestParameters.add(OAuth2ParameterNames.CLIENT_ID, clientRegistration.getClientId());
 		requestParameters.add(OAuth2ParameterNames.SCOPE, StringUtils.collectionToDelimitedString(
 				clientRegistration.getScopes(), " "));
