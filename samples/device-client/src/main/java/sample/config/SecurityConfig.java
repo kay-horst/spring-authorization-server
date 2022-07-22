@@ -138,26 +138,30 @@ public class SecurityConfig {
 
 	private Function<OAuth2AuthorizeRequest, Map<String, Object>> deviceCodeContextAttributesMapper(
 			DeviceRepository deviceRepository) {
+
 		return authorizeRequest -> {
 			HttpServletRequest request = authorizeRequest.getAttribute(HttpServletRequest.class.getName());
 			Assert.notNull(request, "request cannot be null");
 
 			// Look up device code via user code
 			String userCode = request.getParameter("code");
-			String deviceCode = deviceRepository.findDeviceCodeByUserCode(userCode)
-					.orElseThrow(() -> {
-						OAuth2Error oauth2Error = new OAuth2Error(OAuth2ErrorCodes.INVALID_REQUEST);
-						return new OAuth2AuthorizationException(oauth2Error);
-					});
+			String deviceCode = null;
+			if (userCode != null) {
+				deviceCode = deviceRepository.findDeviceCodeByUserCode(userCode)
+						.orElseThrow(() -> {
+							OAuth2Error oauth2Error = new OAuth2Error(OAuth2ErrorCodes.INVALID_REQUEST);
+							return new OAuth2AuthorizationException(oauth2Error);
+						});
+			}
 
-			return Collections.singletonMap("device_code", deviceCode);
+			return (deviceCode != null) ? Collections.singletonMap("device_code", deviceCode) : null;
 		};
 	}
 
 	public static final class OAuth2DeviceGrantRequest extends AbstractOAuth2AuthorizationGrantRequest {
 
-		private static final AuthorizationGrantType GRANT_TYPE = new AuthorizationGrantType(
-				"urn:ietf:params:oauth:grant-type:device_code");
+		private static final AuthorizationGrantType GRANT_TYPE =
+				new AuthorizationGrantType("urn:ietf:params:oauth:grant-type:device_code");
 
 		private final String deviceCode;
 
