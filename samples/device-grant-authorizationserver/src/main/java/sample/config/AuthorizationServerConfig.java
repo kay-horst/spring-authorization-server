@@ -15,6 +15,8 @@
  */
 package sample.config;
 
+import java.util.Arrays;
+
 import sample.web.authentication.InMemoryOAuth2DeviceService;
 import sample.web.authentication.OAuth2DeviceAuthorizationEndpointConfigurer;
 import sample.web.authentication.OAuth2DeviceService;
@@ -32,7 +34,11 @@ import org.springframework.security.oauth2.server.authorization.InMemoryOAuth2Au
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.config.ProviderSettings;
+import org.springframework.security.oauth2.server.authorization.web.authentication.DelegatingAuthenticationConverter;
+import org.springframework.security.oauth2.server.authorization.web.authentication.OAuth2AuthorizationCodeAuthenticationConverter;
+import org.springframework.security.oauth2.server.authorization.web.authentication.OAuth2RefreshTokenAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AuthenticationConverter;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.security.web.util.matcher.OrRequestMatcher;
@@ -74,7 +80,7 @@ public class AuthorizationServerConfig {
 			)
 			.tokenEndpoint(tokenEndpoint ->
 				tokenEndpoint
-					.accessTokenRequestConverter(new OAuth2DeviceTokenRequestAuthenticationConverter(deviceService()))
+					.accessTokenRequestConverter(accessTokenRequestConverter())
 			);
 
 		RequestMatcher requestMatcher = new OrRequestMatcher(
@@ -100,6 +106,14 @@ public class AuthorizationServerConfig {
 			);
 
 		return http.build();
+	}
+
+	private AuthenticationConverter accessTokenRequestConverter() {
+		return new DelegatingAuthenticationConverter(Arrays.asList(
+				new OAuth2DeviceTokenRequestAuthenticationConverter(deviceService()),
+				new OAuth2AuthorizationCodeAuthenticationConverter(),
+				new OAuth2RefreshTokenAuthenticationConverter()
+		));
 	}
 	// @formatter:on
 

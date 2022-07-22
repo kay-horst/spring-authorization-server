@@ -123,9 +123,9 @@ public class SecurityConfig {
 
 		OAuth2AuthorizedClientProvider authorizedClientProvider =
 				OAuth2AuthorizedClientProviderBuilder.builder()
+						.provider(new DeviceCodeOAuth2AuthorizedClientProvider())
 						.authorizationCode()
 						.refreshToken()
-						.provider(new DeviceCodeOAuth2AuthorizedClientProvider())
 						.build();
 		DefaultOAuth2AuthorizedClientManager authorizedClientManager =
 				new DefaultOAuth2AuthorizedClientManager(
@@ -226,7 +226,7 @@ public class SecurityConfig {
 			OAuth2DeviceGrantRequest deviceGrantRequest = new OAuth2DeviceGrantRequest(clientRegistration, deviceCode);
 			OAuth2AccessTokenResponse tokenResponse = getTokenResponse(clientRegistration, deviceGrantRequest);
 			return new OAuth2AuthorizedClient(clientRegistration, context.getPrincipal().getName(),
-					tokenResponse.getAccessToken());
+					tokenResponse.getAccessToken(), tokenResponse.getRefreshToken());
 		}
 
 		private OAuth2AccessTokenResponse getTokenResponse(ClientRegistration clientRegistration,
