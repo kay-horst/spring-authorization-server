@@ -15,12 +15,14 @@
  */
 package sample.web;
 
-import java.util.Collections;
-import java.util.Map;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.core.OAuth2AuthorizationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
@@ -29,15 +31,21 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
  */
 @ControllerAdvice
 public class DeviceControllerAdvice {
+
+	private static final Set<String> DEVICE_GRANT_ERRORS = new HashSet<>(Arrays.asList(
+			"authorization_pending",
+			"slow_down",
+			"access_denied",
+			"expired_token"
+	));
+
 	@ExceptionHandler(OAuth2AuthorizationException.class)
-	public ResponseEntity<Map<String, String>> handleError(OAuth2AuthorizationException ex) {
+	public ResponseEntity<OAuth2Error> handleError(OAuth2AuthorizationException ex) {
 		String errorCode = ex.getError().getErrorCode();
-		System.out.println("====" + errorCode);
-		if (errorCode.equals("authorization_pending")) {
-			return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-					.body(Collections.singletonMap("error", errorCode));
+		if (DEVICE_GRANT_ERRORS.contains(errorCode)) {
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ex.getError());
 		}
-		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-				.body(Collections.singletonMap("error", errorCode));
+		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ex.getError());
 	}
+
 }
