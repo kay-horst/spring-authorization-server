@@ -17,9 +17,10 @@ package sample.config;
 
 import java.util.Arrays;
 
-import sample.web.authentication.InMemoryOAuth2DeviceService;
+import sample.web.authentication.InMemoryOAuth2DeviceAuthorizationService;
+import sample.web.authentication.OAuth2DeviceActivationAuthenticationConverter;
+import sample.web.authentication.OAuth2DeviceActivationAuthenticationProvider;
 import sample.web.authentication.OAuth2DeviceAuthorizationEndpointConfigurer;
-import sample.web.authentication.OAuth2DeviceService;
 import sample.web.authentication.OAuth2DeviceTokenRequestAuthenticationConverter;
 
 import org.springframework.context.annotation.Bean;
@@ -30,9 +31,9 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration;
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.authorization.OAuth2AuthorizationServerConfigurer;
 import org.springframework.security.oauth2.server.authorization.InMemoryOAuth2AuthorizationConsentService;
-import org.springframework.security.oauth2.server.authorization.InMemoryOAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.config.ProviderSettings;
 import org.springframework.security.oauth2.server.authorization.web.authentication.DelegatingAuthenticationConverter;
 import org.springframework.security.oauth2.server.authorization.web.authentication.OAuth2AuthorizationCodeAuthenticationConverter;
@@ -67,7 +68,7 @@ public class AuthorizationServerConfig {
 	// @formatter:off
 	@Bean
 	@Order(Ordered.HIGHEST_PRECEDENCE + 5)
-	public SecurityFilterChain deviceAuthorizationSecurityFilterChain(HttpSecurity http) throws Exception {
+	public SecurityFilterChain deviceAuthorizationSecurityFilterChain(HttpSecurity http, RegisteredClientRepository registeredClientRepository) throws Exception {
 		OAuth2DeviceAuthorizationEndpointConfigurer deviceAuthorizationEndpointConfigurer =
 				new OAuth2DeviceAuthorizationEndpointConfigurer();
 
@@ -76,7 +77,9 @@ public class AuthorizationServerConfig {
 		authorizationServerConfigurer
 			.authorizationEndpoint(authorizationEndpoint ->
 				authorizationEndpoint
-					.authorizationResponseHandler(new SimpleUrlAuthenticationSuccessHandler("/activated"))
+					.authorizationRequestConverter(deviceActivationRequestConverter())
+					.authenticationProvider(deviceActivationProvider(registeredClientRepository))
+					.authorizationResponseHandler(deviceActivationResponseHandler())
 			)
 			.tokenEndpoint(tokenEndpoint ->
 				tokenEndpoint
@@ -108,9 +111,22 @@ public class AuthorizationServerConfig {
 		return http.build();
 	}
 
+	private OAuth2DeviceActivationAuthenticationConverter deviceActivationRequestConverter() {
+		return new OAuth2DeviceActivationAuthenticationConverter(authorizationService());
+	}
+
+	private OAuth2DeviceActivationAuthenticationProvider deviceActivationProvider(RegisteredClientRepository registeredClientRepository) {
+		return new OAuth2DeviceActivationAuthenticationProvider(
+				registeredClientRepository, authorizationService(), authorizationConsentService());
+	}
+
+	private SimpleUrlAuthenticationSuccessHandler deviceActivationResponseHandler() {
+		return new SimpleUrlAuthenticationSuccessHandler("/activated");
+	}
+
 	private AuthenticationConverter accessTokenRequestConverter() {
 		return new DelegatingAuthenticationConverter(Arrays.asList(
-				new OAuth2DeviceTokenRequestAuthenticationConverter(deviceService()),
+				new OAuth2DeviceTokenRequestAuthenticationConverter(authorizationService()),
 				new OAuth2AuthorizationCodeAuthenticationConverter(),
 				new OAuth2RefreshTokenAuthenticationConverter()
 		));
@@ -119,17 +135,12 @@ public class AuthorizationServerConfig {
 
 	@Bean
 	public OAuth2AuthorizationService authorizationService() {
-		return new InMemoryOAuth2AuthorizationService();
+		return new InMemoryOAuth2DeviceAuthorizationService();
 	}
 
 	@Bean
 	public OAuth2AuthorizationConsentService authorizationConsentService() {
 		return new InMemoryOAuth2AuthorizationConsentService();
-	}
-
-	@Bean
-	public OAuth2DeviceService deviceService() {
-		return new InMemoryOAuth2DeviceService();
 	}
 
 }

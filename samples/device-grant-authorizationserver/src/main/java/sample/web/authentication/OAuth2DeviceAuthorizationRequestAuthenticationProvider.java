@@ -19,7 +19,9 @@ import java.security.Principal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
+import java.util.Set;
 
+import org.springframework.lang.Nullable;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
@@ -30,6 +32,7 @@ import org.springframework.security.crypto.keygen.StringKeyGenerator;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.OAuth2ErrorCodes;
+import org.springframework.security.oauth2.core.OAuth2TokenType;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
 import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames;
 import org.springframework.security.oauth2.server.authorization.OAuth2Authorization;
@@ -37,6 +40,9 @@ import org.springframework.security.oauth2.server.authorization.OAuth2Authorizat
 import org.springframework.security.oauth2.server.authorization.authentication.OAuth2ClientAuthenticationToken;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.context.ProviderContextHolder;
+import org.springframework.security.oauth2.server.authorization.token.DefaultOAuth2TokenContext;
+import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenContext;
+import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenGenerator;
 import org.springframework.util.Assert;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -50,6 +56,7 @@ import org.springframework.web.util.UriComponentsBuilder;
  * @see <a target="_blank" href="https://datatracker.ietf.org/doc/html/rfc8628#section-3.1">Section 3.1 Device Authorization Request</a>
  */
 public final class OAuth2DeviceAuthorizationRequestAuthenticationProvider implements AuthenticationProvider {
+
 	private static final String ERROR_URI = "https://datatracker.ietf.org/doc/html/rfc6749#section-5.2";
 
 	private static final String DEFAULT_VERIFICATION_URI = "/activate";
@@ -57,25 +64,19 @@ public final class OAuth2DeviceAuthorizationRequestAuthenticationProvider implem
 	private static final StringKeyGenerator DEFAULT_STATE_GENERATOR =
 			new Base64StringKeyGenerator(Base64.getUrlEncoder());
 
-	private static final StringKeyGenerator DEFAULT_CODE_GENERATOR = new UserCodeGenerator();
-
 	private final OAuth2AuthorizationService authorizationService;
-	private final OAuth2DeviceService deviceService;
 	private String verificationUri = DEFAULT_VERIFICATION_URI;
+	private OAuth2TokenGenerator<OAuth2DeviceCode> deviceCodeGenerator = new OAuth2DeviceCodeGenerator();
+	private OAuth2TokenGenerator<OAuth2UserCode> userCodeGenerator = new OAuth2UserCodeGenerator();
 
 	/**
 	 * Constructs an {@code OAuth2DeviceAuthorizationRequestAuthenticationProvider} using the provided parameters.
 	 *
 	 * @param authorizationService the authorization service
-	 * @param deviceService the device service
 	 */
-	public OAuth2DeviceAuthorizationRequestAuthenticationProvider(
-			OAuth2AuthorizationService authorizationService,
-			OAuth2DeviceService deviceService) {
+	public OAuth2DeviceAuthorizationRequestAuthenticationProvider(OAuth2AuthorizationService authorizationService) {
 		Assert.notNull(authorizationService, "authorizationService cannot be null");
-		Assert.notNull(deviceService, "deviceService cannot be null");
 		this.authorizationService = authorizationService;
-		this.deviceService = deviceService;
 	}
 
 	/**
@@ -110,7 +111,7 @@ public final class OAuth2DeviceAuthorizationRequestAuthenticationProvider implem
 		}
 
 		// Validate client grant_type has device_code grant type
-		if (!registeredClient.getAuthorizationGrantTypes().contains(OAuth2Device.GRANT_TYPE)) {
+		if (!registeredClient.getAuthorizationGrantTypes().contains(OAuth2DeviceCode.GRANT_TYPE)) {
 			throwError(OAuth2ErrorCodes.UNAUTHORIZED_CLIENT, OAuth2ParameterNames.GRANT_TYPE);
 		}
 
@@ -120,30 +121,46 @@ public final class OAuth2DeviceAuthorizationRequestAuthenticationProvider implem
 				.scopes(deviceAuthorizationRequestAuthentication.getScopes())
 				.build();
 
-		// Generate a high-entropy state parameter to use as the device code
+		// Generate a state parameter
 		String state = DEFAULT_STATE_GENERATOR.generateKey();
+
+		// Generate a high-entropy string to use as the device code
+		OAuth2TokenContext tokenContext = DefaultOAuth2TokenContext.builder()
+				.registeredClient(registeredClient)
+				.principal(clientPrincipal)
+				.providerContext(ProviderContextHolder.getProviderContext())
+				.tokenType(new OAuth2TokenType("device_code"))
+				.authorizedScopes(deviceAuthorizationRequestAuthentication.getScopes())
+				.authorizationGrantType(OAuth2DeviceCode.GRANT_TYPE)
+				.authorizationGrant(deviceAuthorizationRequestAuthentication)
+				.build();
+		OAuth2DeviceCode deviceCode = this.deviceCodeGenerator.generate(tokenContext);
+		Assert.notNull(deviceCode, "deviceCode cannot be null");
+
+		// Generate a low-entropy string to use as the user code
+		tokenContext = DefaultOAuth2TokenContext.builder()
+				.registeredClient(registeredClient)
+				.principal(clientPrincipal)
+				.providerContext(ProviderContextHolder.getProviderContext())
+				.tokenType(new OAuth2TokenType("user_code"))
+				.authorizedScopes(deviceAuthorizationRequestAuthentication.getScopes())
+				.authorizationGrantType(OAuth2DeviceCode.GRANT_TYPE)
+				.authorizationGrant(deviceAuthorizationRequestAuthentication)
+				.build();
+		OAuth2UserCode userCode = this.userCodeGenerator.generate(tokenContext);
+		Assert.notNull(userCode, "userCode cannot be null");
+
 		OAuth2Authorization authorization = OAuth2Authorization.withRegisteredClient(registeredClient)
 				.principalName(clientPrincipal.getName())
-				.authorizationGrantType(OAuth2Device.GRANT_TYPE)
+				.authorizationGrantType(OAuth2DeviceCode.GRANT_TYPE)
+				.token(deviceCode)
+				.token(userCode)
 				.attribute(Principal.class.getName(), clientPrincipal)
 				.attribute(OAuth2AuthorizationRequest.class.getName(), authorizationRequest)
 				.attribute(OAuth2Authorization.AUTHORIZED_SCOPE_ATTRIBUTE_NAME, deviceAuthorizationRequestAuthentication.getScopes())
 				.attribute(OAuth2ParameterNames.STATE, state)
 				.build();
 		this.authorizationService.save(authorization);
-
-		// Generate a low-entropy string to use as the user code
-		String userCode = DEFAULT_CODE_GENERATOR.generateKey();
-		Instant issuedAt = Instant.now();
-		Instant expiresAt = issuedAt.plus(300, ChronoUnit.SECONDS);
-		OAuth2Device device = OAuth2Device.withClientId(registeredClient.getClientId())
-				.scopes(deviceAuthorizationRequestAuthentication.getScopes())
-				.deviceCode(state)
-				.userCode(userCode)
-				.issuedAt(issuedAt)
-				.expiresAt(expiresAt)
-				.build();
-		this.deviceService.save(device);
 
 		// Generate the fully-qualified verification URI
 		String issuerUri = ProviderContextHolder.getProviderContext().getIssuer();
@@ -158,8 +175,8 @@ public final class OAuth2DeviceAuthorizationRequestAuthenticationProvider implem
 
 		return OAuth2DeviceAuthorizationRequestAuthenticationToken.with(registeredClient.getClientId(), clientPrincipal)
 				.scopes(deviceAuthorizationRequestAuthentication.getScopes())
-				.deviceCode(state)
-				.userCode(userCode)
+				.deviceCode(deviceCode.getTokenValue())
+				.userCode(userCode.getTokenValue())
 				.verificationUri(verificationUri)
 				.verificationUriComplete(verificationUriComplete)
 				.expiresIn(300)
@@ -177,10 +194,11 @@ public final class OAuth2DeviceAuthorizationRequestAuthenticationProvider implem
 		throw new OAuth2AuthenticationException(error);
 	}
 
-	private static final class UserCodeGenerator implements StringKeyGenerator {
+	private static final class UserCodeStringKeyGenerator implements StringKeyGenerator {
+
 		private final BytesKeyGenerator keyGenerator;
 
-		public UserCodeGenerator() {
+		public UserCodeStringKeyGenerator() {
 			this.keyGenerator = KeyGenerators.secureRandom(8);
 		}
 
@@ -194,6 +212,43 @@ public final class OAuth2DeviceAuthorizationRequestAuthenticationProvider implem
 			}
 			return sb.toString();
 		}
+
+	}
+
+	private static class OAuth2DeviceCodeGenerator implements OAuth2TokenGenerator<OAuth2DeviceCode> {
+
+		private final StringKeyGenerator deviceCodeGenerator =
+				new Base64StringKeyGenerator(Base64.getUrlEncoder().withoutPadding(), 96);
+
+		@Nullable
+		@Override
+		public OAuth2DeviceCode generate(OAuth2TokenContext context) {
+			if (context.getTokenType() == null ||
+					!"device_code".equals(context.getTokenType().getValue())) {
+				return null;
+			}
+			Instant issuedAt = Instant.now();
+			Set<String> scopes = context.getAuthorizedScopes();
+			return new OAuth2DeviceCode(this.deviceCodeGenerator.generateKey(), issuedAt, scopes);
+		}
+
+	}
+
+	private static class OAuth2UserCodeGenerator implements OAuth2TokenGenerator<OAuth2UserCode> {
+
+		private final StringKeyGenerator userCodeGenerator = new UserCodeStringKeyGenerator();
+
+		@Nullable
+		@Override
+		public OAuth2UserCode generate(OAuth2TokenContext context) {
+			if (context.getTokenType() == null || !"user_code".equals(context.getTokenType().getValue())) {
+				return null;
+			}
+			Instant issuedAt = Instant.now();
+			Instant expiresAt = issuedAt.plus(5, ChronoUnit.MINUTES);
+			return new OAuth2UserCode(this.userCodeGenerator.generateKey(), issuedAt, expiresAt);
+		}
+
 	}
 
 }

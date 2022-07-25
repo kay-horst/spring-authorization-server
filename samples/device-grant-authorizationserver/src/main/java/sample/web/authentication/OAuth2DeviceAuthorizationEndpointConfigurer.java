@@ -169,16 +169,14 @@ public final class OAuth2DeviceAuthorizationEndpointConfigurer
 				applicationContext.getBean(OAuth2AuthorizationService.class);
 		OAuth2AuthorizationConsentService authorizationConsentService =
 				applicationContext.getBean(OAuth2AuthorizationConsentService.class);
-		OAuth2DeviceService deviceService =
-				applicationContext.getBean(OAuth2DeviceService.class);
 
 		OAuth2DeviceAuthorizationRequestAuthenticationProvider deviceAuthorizationRequestAuthenticationProvider =
-				new OAuth2DeviceAuthorizationRequestAuthenticationProvider(authorizationService, deviceService);
+				new OAuth2DeviceAuthorizationRequestAuthenticationProvider(authorizationService);
 		authenticationProviders.add(deviceAuthorizationRequestAuthenticationProvider);
 
 		OAuth2DeviceActivationAuthenticationProvider deviceActivationAuthenticationProvider =
 				new OAuth2DeviceActivationAuthenticationProvider(
-						registeredClientRepository, authorizationService, authorizationConsentService, deviceService);
+						registeredClientRepository, authorizationService, authorizationConsentService);
 		authenticationProviders.add(deviceActivationAuthenticationProvider);
 
 		return authenticationProviders;

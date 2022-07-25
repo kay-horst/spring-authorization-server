@@ -15,8 +15,6 @@
  */
 package sample.web.authentication;
 
-import java.time.Instant;
-
 import javax.servlet.http.HttpServletRequest;
 
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
@@ -24,9 +22,13 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2AuthorizationCode;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.OAuth2ErrorCodes;
+import org.springframework.security.oauth2.core.OAuth2TokenType;
 import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames;
+import org.springframework.security.oauth2.server.authorization.OAuth2Authorization;
+import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.authentication.OAuth2AuthorizationCodeAuthenticationToken;
 import org.springframework.security.oauth2.server.authorization.authentication.OAuth2ClientAuthenticationToken;
 import org.springframework.security.web.authentication.AuthenticationConverter;
@@ -45,17 +47,17 @@ public final class OAuth2DeviceTokenRequestAuthenticationConverter implements Au
 	private static final String AUTHORIZATION_PENDING = "authorization_pending";
 	private static final String EXPIRED_TOKEN = "expired_token";
 
-	private final OAuth2DeviceService deviceService;
+	private final OAuth2AuthorizationService authorizationService;
 
-	public OAuth2DeviceTokenRequestAuthenticationConverter(OAuth2DeviceService deviceService) {
-		this.deviceService = deviceService;
+	public OAuth2DeviceTokenRequestAuthenticationConverter(OAuth2AuthorizationService authorizationService) {
+		this.authorizationService = authorizationService;
 	}
 
 	@Override
 	public Authentication convert(HttpServletRequest request) {
 		// grant_type (REQUIRED)
 		String grantType = request.getParameter(OAuth2ParameterNames.GRANT_TYPE);
-		if (!OAuth2Device.GRANT_TYPE.getValue().equals(grantType)) {
+		if (!OAuth2DeviceCode.GRANT_TYPE.getValue().equals(grantType)) {
 			return null;
 		}
 
@@ -88,18 +90,18 @@ public final class OAuth2DeviceTokenRequestAuthenticationConverter implements Au
 		}
 
 		// Check whether authorization has been granted
-		OAuth2Device device = this.deviceService.findByDeviceCode(deviceCode);
-		String authorizationCode = (device != null) ? device.getAuthorizationCode() : null;
+		OAuth2Authorization authorization = this.authorizationService.findByToken(deviceCode, new OAuth2TokenType("device_code"));
+		OAuth2Authorization.Token<OAuth2AuthorizationCode> authorizationCode = (authorization != null) ? authorization.getToken(OAuth2AuthorizationCode.class) : null;
 		if (authorizationCode == null) {
 			throw new OAuth2AuthenticationException(AUTHORIZATION_PENDING);
 		}
 
 		// Check whether device authorization request has expired
-		if (device.getExpiresAt().isBefore(Instant.now())) {
+		if (authorizationCode.isExpired()) {
 			throw new OAuth2AuthenticationException(EXPIRED_TOKEN);
 		}
 
-		return new OAuth2AuthorizationCodeAuthenticationToken(authorizationCode, principal, null, null);
+		return new OAuth2AuthorizationCodeAuthenticationToken(authorizationCode.getToken().getTokenValue(), principal, null, null);
 	}
 
 	private static String getParameter(HttpServletRequest request, String parameterName) {

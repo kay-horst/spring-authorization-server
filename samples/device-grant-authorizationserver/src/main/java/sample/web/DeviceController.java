@@ -17,14 +17,15 @@ package sample.web;
 
 import javax.servlet.http.HttpServletRequest;
 
-import sample.web.authentication.OAuth2Device;
-import sample.web.authentication.OAuth2DeviceService;
-
 import org.springframework.http.server.ServletServerHttpRequest;
-import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationResponseType;
+import org.springframework.security.oauth2.core.OAuth2TokenType;
 import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames;
+import org.springframework.security.oauth2.server.authorization.OAuth2Authorization;
+import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.stereotype.Controller;
-import org.springframework.util.StringUtils;
+import org.springframework.util.Assert;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -37,28 +38,34 @@ import org.springframework.web.util.UriComponentsBuilder;
 @Controller
 public class DeviceController {
 
-	private final OAuth2DeviceService deviceService;
+	private final OAuth2AuthorizationService authorizationService;
+	private final RegisteredClientRepository registeredClientRepository;
 
-	public DeviceController(OAuth2DeviceService deviceService) {
-		this.deviceService = deviceService;
+	public DeviceController(OAuth2AuthorizationService authorizationService, RegisteredClientRepository registeredClientRepository) {
+		this.authorizationService = authorizationService;
+		this.registeredClientRepository = registeredClientRepository;
 	}
 
 	@GetMapping("/activate")
-	public String activate(@RequestParam(name = "code", required = false) String activationCode, HttpServletRequest request) {
-		if (activationCode != null) {
-			return submitCode(activationCode, request);
+	public String activate(@RequestParam(name = "code", required = false) String userCode, HttpServletRequest request) {
+		if (userCode != null) {
+			return submitCode(userCode, request);
 		}
 		return "activate";
 	}
 
 	@PostMapping("/activate")
-	public String submitCode(@RequestParam(name = "code") String activationCode, HttpServletRequest request) {
-		OAuth2Device device = this.deviceService.findByUserCode(activationCode);
+	public String submitCode(@RequestParam(name = "code") String userCode, HttpServletRequest request) {
+		OAuth2Authorization authorization = this.authorizationService.findByToken(userCode, new OAuth2TokenType("user_code"));
+		Assert.notNull(authorization, "authorization cannot be null");
+
+		RegisteredClient registeredClient = this.registeredClientRepository.findById(
+				authorization.getRegisteredClientId());
+		Assert.notNull(registeredClient, "registeredClient cannot be null");
+
 		String authorizationUri = UriComponentsBuilder.fromHttpRequest(new ServletServerHttpRequest(request))
 				.replacePath("/oauth2/device/authorize")
-				.queryParam(OAuth2ParameterNames.CLIENT_ID, device.getClientId())
-				.queryParam(OAuth2ParameterNames.SCOPE, StringUtils.collectionToDelimitedString(device.getScopes(), " "))
-				.queryParam(OAuth2ParameterNames.RESPONSE_TYPE, OAuth2AuthorizationResponseType.CODE.getValue())
+				.queryParam(OAuth2ParameterNames.CLIENT_ID, registeredClient.getClientId())
 				.build()
 				.toUriString();
 		return "redirect:" + authorizationUri;

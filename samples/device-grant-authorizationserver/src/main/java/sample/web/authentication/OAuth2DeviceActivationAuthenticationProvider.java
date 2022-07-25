@@ -15,20 +15,24 @@
  */
 package sample.web.authentication;
 
+import java.util.Set;
+
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
-import org.springframework.security.oauth2.core.OAuth2AuthorizationCode;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.OAuth2ErrorCodes;
 import org.springframework.security.oauth2.core.OAuth2TokenType;
-import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
 import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames;
 import org.springframework.security.oauth2.server.authorization.OAuth2Authorization;
+import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsent;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.authentication.OAuth2AuthorizationCodeRequestAuthenticationProvider;
 import org.springframework.security.oauth2.server.authorization.authentication.OAuth2AuthorizationCodeRequestAuthenticationToken;
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.util.Assert;
 
@@ -37,12 +41,16 @@ import org.springframework.util.Assert;
  * @since 0.4.0
  */
 public final class OAuth2DeviceActivationAuthenticationProvider implements AuthenticationProvider {
-	private static final OAuth2TokenType AUTHORIZATION_CODE = new OAuth2TokenType(OAuth2ParameterNames.CODE);
 
+	private static final String ERROR_URI = "https://datatracker.ietf.org/doc/html/rfc6749#section-5.2";
+	private static final OAuth2TokenType USER_CODE_TOKEN_TYPE = new OAuth2TokenType("user_code");
+	private static final OAuth2TokenType STATE_TOKEN_TYPE = new OAuth2TokenType(OAuth2ParameterNames.STATE);
+
+	private final RegisteredClientRepository registeredClientRepository;
 	private final OAuth2AuthorizationService authorizationService;
-	private final OAuth2DeviceService deviceService;
+	private final OAuth2AuthorizationConsentService authorizationConsentService;
 
-	private final OAuth2AuthorizationCodeRequestAuthenticationProvider delegate;
+	private final AuthenticationProvider delegate;
 
 	/**
 	 * Constructs an {@code OAuth2DeviceAuthorizationAuthenticationProvider} using the provided parameters.
@@ -50,19 +58,17 @@ public final class OAuth2DeviceActivationAuthenticationProvider implements Authe
 	 * @param registeredClientRepository the repository of registered clients
 	 * @param authorizationService the authorization service
 	 * @param authorizationConsentService the authorization consent service
-	 * @param deviceService the device service
 	 */
 	public OAuth2DeviceActivationAuthenticationProvider(
 			RegisteredClientRepository registeredClientRepository,
 			OAuth2AuthorizationService authorizationService,
-			OAuth2AuthorizationConsentService authorizationConsentService,
-			OAuth2DeviceService deviceService) {
+			OAuth2AuthorizationConsentService authorizationConsentService) {
 		Assert.notNull(registeredClientRepository, "registeredClientRepository cannot be null");
 		Assert.notNull(authorizationService, "authorizationService cannot be null");
 		Assert.notNull(authorizationConsentService, "authorizationConsentService cannot be null");
-		Assert.notNull(deviceService, "deviceService cannot be null");
+		this.registeredClientRepository = registeredClientRepository;
 		this.authorizationService = authorizationService;
-		this.deviceService = deviceService;
+		this.authorizationConsentService = authorizationConsentService;
 		this.delegate = new OAuth2AuthorizationCodeRequestAuthenticationProvider(
 				registeredClientRepository, authorizationService, authorizationConsentService);
 	}
@@ -70,33 +76,82 @@ public final class OAuth2DeviceActivationAuthenticationProvider implements Authe
 	@Override
 	public Authentication authenticate(Authentication authentication) throws AuthenticationException {
 		OAuth2AuthorizationCodeRequestAuthenticationToken authorizationCodeRequestAuthentication =
-				(OAuth2AuthorizationCodeRequestAuthenticationToken) this.delegate.authenticate(authentication);
+				(OAuth2AuthorizationCodeRequestAuthenticationToken) authentication;
 
-		OAuth2AuthorizationCode authorizationCode = authorizationCodeRequestAuthentication.getAuthorizationCode();
-		if (authorizationCode != null) {
-			OAuth2Authorization authorization = this.authorizationService.findByToken(authorizationCode.getTokenValue(),
-					AUTHORIZATION_CODE);
-			OAuth2AuthorizationRequest authorizationRequest = authorization.getAttribute(
-					OAuth2AuthorizationRequest.class.getName());
-			String userCode = (String) authorizationRequest.getAdditionalParameters().get(OAuth2ParameterNames.CODE);
-			OAuth2Device device = this.deviceService.findByUserCode(userCode);
-			if (device == null) {
-				throw new OAuth2AuthenticationException(OAuth2ErrorCodes.INVALID_GRANT);
-			}
-
-			// Update device with generated authorization code
-			device = OAuth2Device.with(device)
-					.authorizationCode(authorizationCode.getTokenValue())
-					.build();
-			this.deviceService.save(device);
+		if (authorizationCodeRequestAuthentication.isConsent()) {
+			return this.delegate.authenticate(authentication);
 		}
 
+		RegisteredClient registeredClient = this.registeredClientRepository.findByClientId(
+				authorizationCodeRequestAuthentication.getClientId());
+		if (registeredClient == null) {
+			throwError(OAuth2ErrorCodes.INVALID_REQUEST, OAuth2ParameterNames.CLIENT_ID);
+		}
+
+		Authentication principal = (Authentication) authorizationCodeRequestAuthentication.getPrincipal();
+		if (!isPrincipalAuthenticated(principal)) {
+			// Return the authorization request as-is where isAuthenticated() is false
+			return authorizationCodeRequestAuthentication;
+		}
+
+		OAuth2Authorization authorization = this.authorizationService.findByToken(
+				authorizationCodeRequestAuthentication.getState(), STATE_TOKEN_TYPE);
+		if (authorization == null) {
+			throwError(OAuth2ErrorCodes.INVALID_GRANT, OAuth2ParameterNames.STATE);
+		}
+
+		OAuth2AuthorizationConsent currentAuthorizationConsent = this.authorizationConsentService.findById(
+				registeredClient.getId(), principal.getName());
+
+		Set<String> currentAuthorizedScopes = currentAuthorizationConsent != null ?
+				currentAuthorizationConsent.getScopes() : null;
+
+		if (requireAuthorizationConsent(registeredClient, authorizationCodeRequestAuthentication, currentAuthorizedScopes)) {
+			// Update authorization to associate with the current principal
+			OAuth2Authorization updatedAuthorization = OAuth2Authorization.from(authorization)
+					.principalName(principal.getName())
+					.build();
+			this.authorizationService.save(updatedAuthorization);
+
+			return OAuth2AuthorizationCodeRequestAuthenticationToken.with(registeredClient.getClientId(), principal)
+					.authorizationUri(authorizationCodeRequestAuthentication.getAuthorizationUri())
+					.scopes(currentAuthorizedScopes)
+					.state(authorizationCodeRequestAuthentication.getState())
+					.consentRequired(true)
+					.build();
+		}
+
+		// Return the authorization request as-is where isAuthenticated() is true
 		return authorizationCodeRequestAuthentication;
+	}
+
+	private boolean requireAuthorizationConsent(RegisteredClient registeredClient, OAuth2AuthorizationCodeRequestAuthenticationToken authorizationCodeRequestAuthentication, Set<String> currentAuthorizedScopes) {
+		if (!registeredClient.getClientSettings().isRequireAuthorizationConsent()) {
+			return false;
+		}
+
+		if (currentAuthorizedScopes != null
+				&& currentAuthorizedScopes.containsAll(authorizationCodeRequestAuthentication.getScopes())) {
+			return false;
+		}
+
+		return true;
 	}
 
 	@Override
 	public boolean supports(Class<?> authentication) {
 		return this.delegate.supports(authentication);
+	}
+
+	private static boolean isPrincipalAuthenticated(Authentication principal) {
+		return principal != null &&
+				!AnonymousAuthenticationToken.class.isAssignableFrom(principal.getClass()) &&
+				principal.isAuthenticated();
+	}
+
+	private static void throwError(String errorCode, String parameterName) {
+		OAuth2Error error = new OAuth2Error(errorCode, "OAuth 2.0 Parameter: " + parameterName, ERROR_URI);
+		throw new OAuth2AuthenticationException(error);
 	}
 
 }
