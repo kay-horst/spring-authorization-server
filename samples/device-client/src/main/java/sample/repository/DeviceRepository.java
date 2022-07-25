@@ -16,7 +16,6 @@
 package sample.repository;
 
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.stereotype.Component;
@@ -30,12 +29,16 @@ public class DeviceRepository {
 
 	private final Map<String, String> deviceCodes = new ConcurrentHashMap<>();
 
-	public Optional<String> findDeviceCodeByUserCode(String userCode) {
-		return Optional.ofNullable(this.deviceCodes.get(userCode));
+	public String findDeviceCodeByUserCode(String userCode) {
+		return this.deviceCodes.get(userCode);
 	}
 
 	public void save(String userCode, String deviceCode) {
 		this.deviceCodes.put(userCode, deviceCode);
+	}
+
+	public void remove(String userCode) {
+		this.deviceCodes.remove(userCode);
 	}
 
 }

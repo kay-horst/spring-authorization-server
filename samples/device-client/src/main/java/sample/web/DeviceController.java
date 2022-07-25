@@ -128,10 +128,11 @@ public class DeviceController {
 
 	@PostMapping("/authorize")
 	public void requestAuthorization(
-			// Used by DefaultOAuth2AuthorizedClientManager#contextAttributesMapper, see SecurityConfig
+			// Also used by DefaultOAuth2AuthorizedClientManager#contextAttributesMapper, see SecurityConfig
 			@RequestParam("code") String userCode,
 			@RegisteredOAuth2AuthorizedClient("messaging-client-device-grant")
 					OAuth2AuthorizedClient authorizedClient) {
+		this.deviceRepository.remove(userCode);
 		// This endpoint simply returns 200 OK when client is authorized
 	}
 
