@@ -20,9 +20,9 @@ spring:
             client-authentication-method:
               - client_secret_basic
             authorization-grant-type:
+              - urn:ietf:params:oauth:grant-type:device_code
               - authorization_code
               - refresh_token
-              - urn:ietf:params:oauth:grant-type:device_code
             redirect-uri:
               - http://127.0.0.1:8080/login/oauth2/code/messaging-client-oidc
             scope:
