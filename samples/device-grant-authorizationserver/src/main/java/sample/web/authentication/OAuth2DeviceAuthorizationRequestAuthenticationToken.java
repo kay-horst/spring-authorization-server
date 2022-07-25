@@ -28,7 +28,7 @@ import org.springframework.util.CollectionUtils;
  * used in the Device Authorization Grant.
  *
  * @author Steve Riesenberg
- * @since 0.3.0
+ * @since 0.4.0
  * @see OAuth2DeviceAuthorizationRequestAuthenticationProvider
  */
 public final class OAuth2DeviceAuthorizationRequestAuthenticationToken extends AbstractAuthenticationToken {

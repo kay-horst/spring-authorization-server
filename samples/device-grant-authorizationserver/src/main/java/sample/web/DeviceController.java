@@ -34,7 +34,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 /**
  * @author Steve Riesenberg
- * @since 0.3.0
+ * @since 0.4.0
  */
 @Controller
 public class DeviceController {

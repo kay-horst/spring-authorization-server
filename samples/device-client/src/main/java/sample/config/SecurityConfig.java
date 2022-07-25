@@ -24,7 +24,7 @@ import org.springframework.security.web.SecurityFilterChain;
 
 /**
  * @author Steve Riesenberg
- * @since 0.3.0
+ * @since 0.4.0
  */
 @EnableWebSecurity
 public class SecurityConfig {

@@ -29,7 +29,7 @@ import static org.springframework.security.config.Customizer.withDefaults;
 
 /**
  * @author Steve Riesenberg
- * @since 0.3.0
+ * @since 0.4.0
  */
 @EnableWebSecurity
 public class DefaultSecurityConfig {

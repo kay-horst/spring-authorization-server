@@ -21,6 +21,7 @@ import org.springframework.security.oauth2.core.AuthorizationGrantType;
 
 /**
  * @author Steve Riesenberg
+ * @since 0.4.0
  */
 public final class OAuth2DeviceGrantRequest extends AbstractOAuth2AuthorizationGrantRequest {
 

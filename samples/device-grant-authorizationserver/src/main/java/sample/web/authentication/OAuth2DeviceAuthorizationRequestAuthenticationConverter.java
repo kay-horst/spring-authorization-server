@@ -34,7 +34,7 @@ import org.springframework.util.StringUtils;
 
 /**
  * @author Steve Riesenberg
- * @since 0.3.0
+ * @since 0.4.0
  */
 public final class OAuth2DeviceAuthorizationRequestAuthenticationConverter implements AuthenticationConverter {
 	private static final String ERROR_URI = "https://datatracker.ietf.org/doc/html/rfc6749#section-5.2";

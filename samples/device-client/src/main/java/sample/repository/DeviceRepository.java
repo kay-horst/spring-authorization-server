@@ -22,7 +22,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * @author Steve Riesenberg
- * @since 0.3.0
+ * @since 0.4.0
  */
 @Component
 public class DeviceRepository {

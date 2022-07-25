@@ -45,7 +45,7 @@ import org.springframework.web.util.UriComponentsBuilder;
  * used in the Device Authorization Grant.
  *
  * @author Steve Riesenberg
- * @since 0.3.0
+ * @since 0.4.0
  * @see OAuth2DeviceAuthorizationRequestAuthenticationToken
  * @see <a target="_blank" href="https://datatracker.ietf.org/doc/html/rfc8628#section-3.1">Section 3.1 Device Authorization Request</a>
  */

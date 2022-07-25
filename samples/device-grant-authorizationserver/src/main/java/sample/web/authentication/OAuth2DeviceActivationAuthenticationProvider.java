@@ -34,7 +34,7 @@ import org.springframework.util.Assert;
 
 /**
  * @author Steve Riesenberg
- * @since 0.3.0
+ * @since 0.4.0
  */
 public final class OAuth2DeviceActivationAuthenticationProvider implements AuthenticationProvider {
 	private static final OAuth2TokenType AUTHORIZATION_CODE = new OAuth2TokenType(OAuth2ParameterNames.CODE);

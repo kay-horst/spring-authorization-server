@@ -42,7 +42,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 /**
  * @author Steve Riesenberg
- * @since 0.3.0
+ * @since 0.4.0
  */
 @Configuration
 public class WebClientConfig {

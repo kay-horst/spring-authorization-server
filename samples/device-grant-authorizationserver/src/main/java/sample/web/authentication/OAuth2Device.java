@@ -25,7 +25,7 @@ import org.springframework.util.Assert;
 
 /**
  * @author Steve Riesenberg
- * @since 0.3.0
+ * @since 0.4.0
  */
 public class OAuth2Device implements Serializable {
 	private static final long serialVersionUID = Version.SERIAL_VERSION_UID;

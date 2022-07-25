@@ -28,7 +28,7 @@ import org.springframework.util.Assert;
  * <b>NOTE:</b> This implementation should ONLY be used during development/testing.
  *
  * @author Steve Riesenberg
- * @since 0.3.0
+ * @since 0.4.0
  * @see OAuth2DeviceService
  */
 public class InMemoryOAuth2DeviceService implements OAuth2DeviceService {

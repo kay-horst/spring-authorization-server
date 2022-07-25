@@ -50,7 +50,7 @@ import static org.springframework.security.oauth2.client.web.reactive.function.c
 
 /**
  * @author Steve Riesenberg
- * @since 0.3.0
+ * @since 0.4.0
  */
 @Controller
 public class DeviceController {

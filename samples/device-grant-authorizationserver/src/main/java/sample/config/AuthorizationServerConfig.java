@@ -46,7 +46,7 @@ import org.springframework.security.web.util.matcher.RequestMatcher;
 
 /**
  * @author Steve Riesenberg
- * @since 0.3.0
+ * @since 0.4.0
  */
 @Configuration
 public class AuthorizationServerConfig {

@@ -31,6 +31,7 @@ import org.springframework.util.Assert;
 
 /**
  * @author Steve Riesenberg
+ * @since 0.4.0
  */
 public final class DeviceCodeOAuth2AuthorizedClientProvider implements OAuth2AuthorizedClientProvider {
 

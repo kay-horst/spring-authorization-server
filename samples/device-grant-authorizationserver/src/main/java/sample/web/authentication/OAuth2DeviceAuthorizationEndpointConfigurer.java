@@ -44,7 +44,7 @@ import org.springframework.util.Assert;
  * Configurer for the OAuth 2.0 Device Authorization Endpoint.
  * 
  * @author Steve Riesenberg
- * @since 0.3.0
+ * @since 0.4.0
  * @see OAuth2DeviceAuthorizationEndpointFilter
  */
 public final class OAuth2DeviceAuthorizationEndpointConfigurer

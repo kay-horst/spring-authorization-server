@@ -36,6 +36,7 @@ import org.springframework.web.client.RestTemplate;
 
 /**
  * @author Steve Riesenberg
+ * @since 0.4.0
  */
 public final class OAuth2DeviceAccessTokenResponseClient implements OAuth2AccessTokenResponseClient<OAuth2DeviceGrantRequest> {
 

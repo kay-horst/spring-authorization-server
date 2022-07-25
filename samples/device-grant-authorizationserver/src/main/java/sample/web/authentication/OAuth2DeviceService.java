@@ -22,7 +22,7 @@ import org.springframework.lang.Nullable;
  * OAuth 2.0 Device Authorization Grant.
  *
  * @author Steve Riesenberg
- * @since 0.3.0
+ * @since 0.4.0
  * @see OAuth2Device
  */
 public interface OAuth2DeviceService {

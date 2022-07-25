@@ -50,7 +50,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * which handles the processing of the OAuth 2.0 Device Authorization Request.
  *
  * @author Steve Riesenberg
- * @since 0.3.0
+ * @since 0.4.0
  * @see <a target="_blank" href="https://datatracker.ietf.org/doc/html/rfc8628">OAuth 2.0 Device Authorization Grant</a>
  */
 public final class OAuth2DeviceAuthorizationEndpointFilter extends OncePerRequestFilter {
