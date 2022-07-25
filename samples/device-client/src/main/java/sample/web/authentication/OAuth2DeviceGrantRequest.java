@@ -25,7 +25,7 @@ import org.springframework.security.oauth2.core.AuthorizationGrantType;
  */
 public final class OAuth2DeviceGrantRequest extends AbstractOAuth2AuthorizationGrantRequest {
 
-	public static final AuthorizationGrantType GRANT_TYPE =
+	static final AuthorizationGrantType GRANT_TYPE =
 			new AuthorizationGrantType("urn:ietf:params:oauth:grant-type:device_code");
 
 	private final String deviceCode;
