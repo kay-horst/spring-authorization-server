@@ -21,10 +21,8 @@ import sample.web.authentication.OAuth2Device;
 import sample.web.authentication.OAuth2DeviceService;
 
 import org.springframework.http.server.ServletServerHttpRequest;
-import org.springframework.security.oauth2.core.OAuth2TokenType;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationResponseType;
 import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames;
-import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
 import org.springframework.stereotype.Controller;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -39,13 +37,9 @@ import org.springframework.web.util.UriComponentsBuilder;
 @Controller
 public class DeviceController {
 
-	private static final OAuth2TokenType STATE_TOKEN_TYPE = new OAuth2TokenType(OAuth2ParameterNames.STATE);
-
-	private final OAuth2AuthorizationService authorizationService;
 	private final OAuth2DeviceService deviceService;
 
-	public DeviceController(OAuth2AuthorizationService authorizationService, OAuth2DeviceService deviceService) {
-		this.authorizationService = authorizationService;
+	public DeviceController(OAuth2DeviceService deviceService) {
 		this.deviceService = deviceService;
 	}
 
