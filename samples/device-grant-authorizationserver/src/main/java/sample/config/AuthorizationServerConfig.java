@@ -110,6 +110,7 @@ public class AuthorizationServerConfig {
 
 		return http.build();
 	}
+	// @formatter:on
 
 	private OAuth2DeviceActivationAuthenticationConverter deviceActivationRequestConverter() {
 		return new OAuth2DeviceActivationAuthenticationConverter(authorizationService());
@@ -131,7 +132,6 @@ public class AuthorizationServerConfig {
 				new OAuth2RefreshTokenAuthenticationConverter()
 		));
 	}
-	// @formatter:on
 
 	@Bean
 	public OAuth2AuthorizationService authorizationService() {

@@ -26,10 +26,8 @@ import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.oauth2.core.OAuth2Error;
-import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.authentication.OAuth2AuthorizationCodeRequestAuthenticationToken;
-import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.web.OAuth2ClientAuthenticationFilter;
 import org.springframework.security.web.access.intercept.FilterSecurityInterceptor;
 import org.springframework.security.web.authentication.AuthenticationConverter;
@@ -163,21 +161,12 @@ public final class OAuth2DeviceAuthorizationEndpointConfigurer
 		// TODO: This assumes beans are available
 		ApplicationContext applicationContext =
 				builder.getSharedObject(ApplicationContext.class);
-		RegisteredClientRepository registeredClientRepository =
-				applicationContext.getBean(RegisteredClientRepository.class);
 		OAuth2AuthorizationService authorizationService =
 				applicationContext.getBean(OAuth2AuthorizationService.class);
-		OAuth2AuthorizationConsentService authorizationConsentService =
-				applicationContext.getBean(OAuth2AuthorizationConsentService.class);
 
 		OAuth2DeviceAuthorizationRequestAuthenticationProvider deviceAuthorizationRequestAuthenticationProvider =
 				new OAuth2DeviceAuthorizationRequestAuthenticationProvider(authorizationService);
 		authenticationProviders.add(deviceAuthorizationRequestAuthenticationProvider);
-
-		OAuth2DeviceActivationAuthenticationProvider deviceActivationAuthenticationProvider =
-				new OAuth2DeviceActivationAuthenticationProvider(
-						registeredClientRepository, authorizationService, authorizationConsentService);
-		authenticationProviders.add(deviceActivationAuthenticationProvider);
 
 		return authenticationProviders;
 	}
