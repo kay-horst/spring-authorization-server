@@ -110,7 +110,7 @@ public class SecurityConfiguration {
             .formLogin((formLogin) ->
                 formLogin
                     .loginPage("/login")
-                    .successHandler(new MultiFactorAuthenticationHandler("/authenticator", "MFA_REQUIRED"))
+                    .successHandler(new MultiFactorAuthenticationHandler("/security-question", "SECURITY_QUESTION_REQUIRED"))
                     .failureHandler(new SimpleUrlAuthenticationFailureHandler("/login?error"))
             )
             .exceptionHandling((exceptionHandling) ->
