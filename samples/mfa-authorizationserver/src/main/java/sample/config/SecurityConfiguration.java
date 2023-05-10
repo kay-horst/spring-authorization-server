@@ -84,8 +84,8 @@ public class SecurityConfiguration {
 
         // @formatter:off
         http
-            .requestMatcher(endpointsMatcher)
-            .authorizeRequests(authorizeRequests ->
+            //.requestMatcher(endpointsMatcher) TODO
+            .authorizeHttpRequests(authorizeRequests ->
                 authorizeRequests.anyRequest().authenticated()
             )
             .csrf(csrf -> csrf.ignoringRequestMatchers(endpointsMatcher))
@@ -100,11 +100,11 @@ public class SecurityConfiguration {
     protected SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
         // @formatter:off
         http
-            .authorizeRequests((authorizeRequests) ->
+            .authorizeHttpRequests((authorizeRequests) ->
                 authorizeRequests
-                    .antMatchers("/assets/**", "/webjars/**", "/login").permitAll()
-                    .antMatchers("/authenticator").hasAuthority("MFA_REQUIRED")
-                    .antMatchers("/security-question").hasAuthority("SECURITY_QUESTION_REQUIRED")
+                    .requestMatchers("/assets/**", "/webjars/**", "/login").permitAll()
+                    .requestMatchers("/authenticator").hasAuthority("MFA_REQUIRED")
+                    .requestMatchers("/security-question").hasAuthority("SECURITY_QUESTION_REQUIRED")
                     .anyRequest().hasRole("USER")
             )
             .formLogin((formLogin) ->
